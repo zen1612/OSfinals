@@ -19,3 +19,7 @@ int main(int argc, char *argv[]) {
     free(arr);
     return 0;
 }
+
+//gcc -O2 -o tlb_test tlb_test.c
+//perf stat -e dTLB-loads,dTLB-load-misses ./tlb_test s  # sequential
+//perf stat -e dTLB-loads,dTLB-load-misses ./tlb_test r  # random
