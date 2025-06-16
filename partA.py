@@ -5,10 +5,10 @@ from typing import List, Tuple, Dict
 class Frame: # represents a physical memory frame
     def __init__(self, page: int = -1, last_used: int = 0):
         self.page = page
-        self.last_used = last_used
-        self.valid = page != -1
+        self.last_used = last_used  # keeps track of when the frame was last used for LRU
+        self.valid = page != -1  # checks if the frame contains a valid page
 
-class TLBEntry:
+class TLBEntry: # entry to map virtual frames to physical frames
     def __init__(self, virtual_page: int, physical_frame: int, timestamp: int = 0):
         self.virtual_page = virtual_page
         self.physical_frame = physical_frame
@@ -20,10 +20,10 @@ class vmsim:
         self.tlb_size = tlb_size
         self.page_size = page_size
         # physical memory (frames)
-        self.frames = [Frame() for _ in range(physical_frames)]
-        self.frame_count = 0
+        self.frames = [Frame() for _ in range(physical_frames)]  # physical memory frames
+        self.frame_count = 0  # tracks how many frames are currently in use
         # TLB
-        self.tlb = []
+        self.tlb = []  # tlb implemented as a list
         # page table (virtual page -> physical frame mapping)
         self.page_table = {}
         # statistics
@@ -31,7 +31,7 @@ class vmsim:
         self.tlb_hits = 0
         self.tlb_misses = 0
         self.memory_accesses = 0
-        self.current_time = 0
+        self.current_time = 0  # used for lru tracking
     
     def vir_to_phys_address(self, virtual_addr: int) -> Tuple[int, bool, bool]:
         # translates virtual address to physical address
@@ -44,7 +44,7 @@ class vmsim:
         # checks TLB first
         tlb_hit = False
         physical_frame = None
-        for entry in self.tlb:
+        for entry in self.tlb:  # checks TLB for a hit
             if entry.virtual_page == virtual_page:
                 physical_frame = entry.physical_frame
                 entry.timestamp = self.current_time
@@ -55,7 +55,7 @@ class vmsim:
         if not tlb_hit:
             self.tlb_misses += 1
             # checks page table
-            if virtual_page in self.page_table:
+            if virtual_page in self.page_table:  # checks page table
                 physical_frame = self.page_table[virtual_page]
                 page_fault = False
             else:
@@ -63,7 +63,7 @@ class vmsim:
                 physical_frame = self.handlePageFault(virtual_page)
                 page_fault = True
                 self.page_faults += 1
-            # update TLB
+            # update TLB with new mapping
             self.updateTLB(virtual_page, physical_frame)
         else:
             page_fault = False
@@ -79,7 +79,7 @@ class vmsim:
         new_entry = TLBEntry(virtual_page, physical_frame, self.current_time)
         self.tlb.append(new_entry)
         # maintains TLB size
-        if len(self.tlb) > self.tlb_size:
+        if len(self.tlb) > self.tlb_size:  # maintains TLB size by evicting the LRU entry
             self.tlb.sort(key=lambda x: x.timestamp)
             self.tlb = self.tlb[1:]  # Remove oldest
     
