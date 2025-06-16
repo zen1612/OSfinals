@@ -15,22 +15,17 @@ class TLBEntry:
         self.timestamp = timestamp
 
 class vmsim:
-    
     def __init__(self, physical_frames: int = 3, tlb_size: int = 4, page_size: int = 4096):
         self.physical_frames = physical_frames
         self.tlb_size = tlb_size
         self.page_size = page_size
-        
         # physical memory (frames)
         self.frames = [Frame() for _ in range(physical_frames)]
         self.frame_count = 0
-        
         # TLB
         self.tlb = []
-        
         # page table (virtual page -> physical frame mapping)
         self.page_table = {}
-        
         # statistics
         self.page_faults = 0
         self.tlb_hits = 0
@@ -39,21 +34,16 @@ class vmsim:
         self.current_time = 0
     
     def vir_to_phys_address(self, virtual_addr: int) -> Tuple[int, bool, bool]:
-        
         # translates virtual address to physical address
         # by returning (physical_address, tlb_hit, page_fault)
-        
         self.memory_accesses += 1
         self.current_time += 1
-        
         # extracts page number and offset
         virtual_page = virtual_addr // self.page_size
         offset = virtual_addr % self.page_size
-        
         # checks TLB first
         tlb_hit = False
         physical_frame = None
-        
         for entry in self.tlb:
             if entry.virtual_page == virtual_page:
                 physical_frame = entry.physical_frame
@@ -64,7 +54,6 @@ class vmsim:
         
         if not tlb_hit:
             self.tlb_misses += 1
-            
             # checks page table
             if virtual_page in self.page_table:
                 physical_frame = self.page_table[virtual_page]
@@ -74,12 +63,10 @@ class vmsim:
                 physical_frame = self.handlePageFault(virtual_page)
                 page_fault = True
                 self.page_faults += 1
-            
             # update TLB
             self.updateTLB(virtual_page, physical_frame)
         else:
             page_fault = False
-        
         # calculates physical address
         physical_addr = physical_frame * self.page_size + offset
         return physical_addr, tlb_hit, page_fault
@@ -88,11 +75,9 @@ class vmsim:
         # update TLB with new translation
         # remove existing entry if another one exists
         self.tlb = [entry for entry in self.tlb if entry.virtual_page != virtual_page]
-        
         # add new entry
         new_entry = TLBEntry(virtual_page, physical_frame, self.current_time)
         self.tlb.append(new_entry)
-        
         # maintains TLB size
         if len(self.tlb) > self.tlb_size:
             self.tlb.sort(key=lambda x: x.timestamp)
@@ -113,28 +98,23 @@ class vmsim:
             # removes old mapping
             if old_page in self.page_table:
                 del self.page_table[old_page]
-            
             # removes from TLB
             self.tlb = [entry for entry in self.tlb if entry.virtual_page != old_page]
-            
             # load new page
             self.frames[frame_index] = Frame(virtual_page, self.current_time)
-        
         # update the page table
         self.page_table[virtual_page] = frame_index
         return frame_index
-    
+        
     def findEvictionCandidate(self) -> int:
         # custom algorithm that uses LRU fallback using FIFO structure.
         min_pages = min(2, self.frame_count)
         oldest_time = float('inf')
         candidate_index = 0
-        
         for i in range(min_pages):
             if self.frames[i].last_used < oldest_time:
                 oldest_time = self.frames[i].last_used
                 candidate_index = i
-        
         return candidate_index
     
     def get_stats(self) -> Dict:
@@ -156,7 +136,6 @@ class pagealgorithm:
         # FIFO page replacement algorithm
         frames = []
         page_faults = 0
-        
         for page in pages:
             if page not in frames:
                 page_faults += 1
@@ -165,7 +144,6 @@ class pagealgorithm:
                 else:
                     frames.pop(0)  # Remove first (oldest)
                     frames.append(page)
-        
         return page_faults
     
     @staticmethod
@@ -199,14 +177,12 @@ class pagealgorithm:
         
         for page in pages:
             current_time += 1
-            
             if page in frames:
                 # Update last used time
                 last_used[page] = current_time
             else:
                 # Page fault
                 page_faults += 1
-                
                 if len(frames) < capacity:
                     frames.append(page)
                     last_used[page] = current_time
@@ -215,25 +191,20 @@ class pagealgorithm:
                     min_pages = min(2, len(frames))
                     oldest_time = float('inf')
                     evict_index = 0
-                    
                     for i in range(min_pages):
                         frame_page = frames[i]
                         if last_used[frame_page] < oldest_time:
                             oldest_time = last_used[frame_page]
                             evict_index = i
-                    
                     # Remove evicted page
                     evicted_page = frames.pop(evict_index)
                     del last_used[evicted_page]
-                    
                     # Add new page
                     frames.append(page)
                     last_used[page] = current_time
-        
         return page_faults
 
 def main():
-    
     # 3 reference strings used for the test case
     test_cases = [
         {
@@ -262,34 +233,28 @@ def main():
         print(f"Physical Frames: {test_case['frames']}")
         print(f"TLB Size: {test_case['tlb_size']}")
         print("=" * 50)
-        
         # Page Replacement Algorithms
         reference_string = test_case['reference_string']
         frames = test_case['frames']
-        
         fifo_faults = pagealgorithm.fifo(reference_string, frames)
         lru_faults = pagealgorithm.lru(reference_string, frames)
         custom_faults = pagealgorithm.custom_algorithm(reference_string, frames)
-        
+    
         print("Page Replacement Results:")
         print(f"  FIFO Page Faults: {fifo_faults}")
         print(f"  LRU Page Faults: {lru_faults}")
         print(f"  Custom Page Faults: {custom_faults}")
-        
         # address Translation with TLB
         vm = vmsim(
             physical_frames=frames,
             tlb_size=test_case['tlb_size'],
             page_size=1024
         )
-        
         # converts page numbers to virtual addresses
         virtual_addresses = [page * 1024 for page in reference_string]
-        
         # process all addresses
         for vaddr in virtual_addresses:
             vm.vir_to_phys_address(vaddr)
-        
         # get and display statistics
         stats = vm.get_stats()
         print("\nAddress Translation with TLB Results:")
