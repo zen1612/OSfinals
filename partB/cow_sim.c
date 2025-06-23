@@ -7,7 +7,8 @@
 void show_memory(const char *who) {
     char cmd[128];
     snprintf(cmd, sizeof(cmd), "echo '%s (PID %d)' && grep Vm /proc/%d/status", who, getpid(), getpid());
-    system(cmd);
+    int ret = system(cmd);
+    (void)ret;
 }
 
 int main() {
