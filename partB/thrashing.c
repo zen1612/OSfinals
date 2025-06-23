@@ -89,7 +89,7 @@ int main(int argc, char *argv[]) {
         
         iterations++;
         if (iterations % 100 == 0) {
-            printf("Ctrl+C to stop\n", iterations);
+            printf("Ctrl+C to stop\n");
         }
         
         usleep(1000); 
