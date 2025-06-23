@@ -11,7 +11,7 @@
 
 int main() {
     //page fault simulator
-    printf("\n[1] malloc() — Minor page faults\n");
+    printf("\ncreating minor page faults using malloc()\n");
     char *malloc_mem = malloc(SIZE);
     if (!malloc_mem) {
         perror("malloc failed");
@@ -22,7 +22,6 @@ int main() {
     }
     free(malloc_mem);
 
-    printf("\n[2] mmap(MAP_ANONYMOUS) — Minor page faults\n");
     char *anon_mem = mmap(NULL, SIZE, PROT_READ | PROT_WRITE,
                           MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (anon_mem == MAP_FAILED) {
@@ -34,7 +33,7 @@ int main() {
     }
     munmap(anon_mem, SIZE);
 
-    printf("\n[3] mmap(file) — Major page faults\n");
+    printf("\ncreating major page faults using mmap()\n");
 
     // creates a test file and fill with data
     int fd = open("testfile", O_CREAT | O_RDWR | O_TRUNC, 0644);
@@ -58,10 +57,9 @@ int main() {
     close(fd);  // flush and close
 
     // drops system cache with root access
-    printf(">> Dropping system cache (requires sudo)...\n");
     int ret = system("sudo sh -c 'sync; echo 3 > /proc/sys/vm/drop_caches'");
     if (ret != 0) {
-        fprintf(stderr, "Failed to drop caches. Are you running with sudo?\n");
+        fprintf(stderr, "Failed to drop caches\n");
     }
 
     // reopens the file in read only
