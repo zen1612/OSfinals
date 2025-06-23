@@ -3,16 +3,29 @@
 #include <time.h>
 #include <unistd.h>
 
-#define SIZE 1024*1024*512 
-#define PAGE_SIZE 4096 
+#define SIZE (512 * 1024 * 1024)  // 512MB
+#define PAGE_SIZE 4096
 
 int main(int argc, char *argv[]) {
-    int *arr = malloc(SIZE);
-    int steps = SIZE / sizeof(int);
+    if (argc < 2 || (argv[1][0] != 'r' && argv[1][0] != 's')) {
+        fprintf(stderr, "Usage: %s [s|r] (s = sequential, r = random)\n", argv[0]);
+        return 1;
+    }
+
+    size_t steps = SIZE / sizeof(int);
+    int *arr = malloc(steps * sizeof(int));
+    if (!arr) {
+        perror("malloc failed");
+        return 1;
+    }
+
+    int stride = PAGE_SIZE / sizeof(int);
+    int pages = steps / stride;
+
     srand(time(NULL));
 
-    for (int i = 0; i < steps; i += (PAGE_SIZE / sizeof(int))) {
-        int index = (argv[1][0] == 'r') ? (rand() % (steps / (PAGE_SIZE / sizeof(int)))) * (PAGE_SIZE / sizeof(int)) : i;
+    for (int i = 0; i < steps; i += stride) {
+        int index = (argv[1][0] == 'r') ? (rand() % pages) * stride : i;
         arr[index]++;
     }
 
