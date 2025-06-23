@@ -1,0 +1,103 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
+
+#define SIZE (100 * 1024 * 1024) // 100MB
+#define PAGE_SIZE 4096
+
+int main() {
+    printf("=== Page Faults Demo ===\n");
+
+    // ------------------------------
+    // 1. malloc() — Minor Page Faults
+    // ------------------------------
+    printf("\n[1] malloc() — Minor page faults\n");
+    char *malloc_mem = malloc(SIZE);
+    if (!malloc_mem) {
+        perror("malloc failed");
+        return 1;
+    }
+    for (size_t i = 0; i < SIZE; i += PAGE_SIZE) {
+        malloc_mem[i] = 1;
+    }
+    free(malloc_mem);
+
+    // ------------------------------
+    // 2. Anonymous mmap() — Minor Page Faults
+    // ------------------------------
+    printf("\n[2] mmap(MAP_ANONYMOUS) — Minor page faults\n");
+    char *anon_mem = mmap(NULL, SIZE, PROT_READ | PROT_WRITE,
+                          MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (anon_mem == MAP_FAILED) {
+        perror("mmap anonymous failed");
+        return 1;
+    }
+    for (size_t i = 0; i < SIZE; i += PAGE_SIZE) {
+        anon_mem[i] = 1;
+    }
+    munmap(anon_mem, SIZE);
+
+    // ------------------------------
+    // 3. File-backed mmap() — Major Page Faults
+    // ------------------------------
+    printf("\n[3] mmap(file) — Major page faults\n");
+
+    // Step 1: Create test file and fill with data
+    int fd = open("testfile", O_CREAT | O_RDWR | O_TRUNC, 0644);
+    if (fd == -1) {
+        perror("open failed");
+        return 1;
+    }
+
+    char *buffer = malloc(PAGE_SIZE);
+    memset(buffer, 0, PAGE_SIZE);
+    for (size_t i = 0; i < SIZE / PAGE_SIZE; i++) {
+        if (write(fd, buffer, PAGE_SIZE) != PAGE_SIZE) {
+            perror("write failed");
+            close(fd);
+            free(buffer);
+            return 1;
+        }
+    }
+    free(buffer);
+    fsync(fd);
+    close(fd);  // important to flush and close
+
+    // Step 2: Drop system cache (requires root)
+    printf(">> Dropping system cache (requires sudo)...\n");
+    int ret = system("sudo sh -c 'sync; echo 3 > /proc/sys/vm/drop_caches'");
+    if (ret != 0) {
+        fprintf(stderr, "Failed to drop caches. Are you running with sudo?\n");
+    }
+
+    // Step 3: Reopen file in read-only mode
+    fd = open("testfile", O_RDONLY);
+    if (fd == -1) {
+        perror("reopen failed");
+        return 1;
+    }
+
+    // Step 4: mmap() the file
+    char *file_mem = mmap(NULL, SIZE, PROT_READ, MAP_PRIVATE, fd, 0);
+    if (file_mem == MAP_FAILED) {
+        perror("mmap file failed");
+        close(fd);
+        return 1;
+    }
+
+    // Step 5: Access every page to trigger major page faults
+    for (size_t i = 0; i < SIZE; i += PAGE_SIZE) {
+        volatile char temp = file_mem[i]; // access to force fault
+    }
+
+    munmap(file_mem, SIZE);
+    close(fd);
+    unlink("testfile");
+
+    printf("\n=== Done. Run with: /usr/bin/time -v ./page_faults_demo ===\n");
+    return 0;
+}
