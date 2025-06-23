@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
     struct sysinfo info;
     sysinfo(&info);
     
-    // Allocate 150% of total RAM to force swapping
+    // allocates 150% of total ram to force swapping
     size_t target_size = info.totalram * 3 / 2;
     size_t chunk_size = 64 * MB;
     int num_chunks = target_size / chunk_size;
@@ -49,8 +49,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     
-    // Allocate all memory
-    printf("Phase 1: Allocating memory...\n");
+    // allocates all memory
     for (int i = 0; i < num_chunks && running; i++) {
         chunks[i] = malloc(chunk_size);
         if (!chunks[i]) {
